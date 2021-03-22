@@ -1,0 +1,22 @@
+#!/bin/dash
+commitNo=$(echo $1 | cut -d ':' -f 1)
+fileName=$(echo $1 | cut -d ':' -f 2)
+if (! test $commitNo -ge 0) > /dev/null 2>&1
+then
+    if (! cat .girt/index/$fileName) 2>/dev/null
+    then
+        echo "girt-show: error: '$fileName' not found in index"
+        exit 1
+    fi
+else
+    if (! cat .girt/repository/$commitNo/$fileName) 2>/dev/null
+    then
+        if (! test -d .girt/repository/$commitNo)
+        then
+            echo "girt-show: error: unknown commit '$commitNo'"
+        else
+            echo "girt-show: error: '$fileName' not found in commit $commitNo"
+        fi
+        exit 1
+    fi
+fi

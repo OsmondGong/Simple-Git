@@ -1,0 +1,15 @@
+#!/bin/dash
+for files in $@
+do
+    if (test -f $files) 
+    then
+        if (! cp $files .girt/index/$files) > /dev/null 2>&1
+        then
+            echo "girt-add: error: girt repository directory .girt not found"
+            exit 1
+        fi
+    else
+        echo "girt-add: error: can not open 'non_existent_file'"
+        exit 1
+    fi
+done
