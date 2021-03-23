@@ -8,8 +8,11 @@ do
             echo "girt-add: error: girt repository directory .girt not found"
             exit 1
         fi
+    elif (test -f .girt/index/$files)
+    then
+        rm .girt/index/$files
     else
-        echo "girt-add: error: can not open 'non_existent_file'"
+        echo "girt-add: error: can not open '$files'"
         exit 1
     fi
 done

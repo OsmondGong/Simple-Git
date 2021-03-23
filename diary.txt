@@ -1,3 +1,4 @@
 Date        Start       Stop        Activity        Comments
-25/03       03:00       06:43       coding          implemented subset 0
-25/03       06:45       07:31       bugfixing       bugfixed subset 0
+23/03       03:00       06:43       coding          implemented subset 0
+23/03       06:45       07:31       bugfixing       bugfixed subset 0
+23/03       07:31       16:48       coding          implemented subset 1

@@ -1,0 +1,56 @@
+#!/bin/dash
+echo -n "" >.girt/status.txt
+count=$(($(wc -l < .girt/message.txt)-1))
+for files in `ls`
+do
+    if (! test -f .girt/index/$files)
+    then
+        echo "$files - untracked" >>.girt/status.txt
+    elif (! test -f .girt/repository/$count/$files)
+    then
+        if (! cmp $files .girt/index/$files) > /dev/null 2>&1
+        then
+            echo "$files - added to index, file changed" >>.girt/status.txt
+        else
+            echo "$files - added to index" >>.girt/status.txt
+        fi
+    elif (! cmp .girt/index/$files .girt/repository/$count/$files) > /dev/null 2>&1
+    then
+        if (! cmp $files .girt/index/$files) > /dev/null 2>&1
+        then
+            echo "$files - file changed, different changes staged for commit" >>.girt/status.txt
+        else
+            echo "$files - file changed, changes staged for commit" >>.girt/status.txt
+        fi
+    elif (! cmp $files .girt/index/$files) > /dev/null 2>&1
+    then
+        echo "$files - file changed, changes not staged for commit" >>.girt/status.txt
+    else
+        echo "$files - same as repo" >>.girt/status.txt
+    fi
+done
+deleted=$(find ".girt/repository/$count/" "." "." -printf '%P\n' | sort | uniq -u)
+for files in $deleted
+do
+    if (test -f .girt/index/$files)
+    then
+        if (! cmp .girt/index/$files .girt/repository/$count/$files) > /dev/null 2>&1
+        then
+            echo "$files - file deleted, different changes staged for commit" >>.girt/status.txt
+        else
+            echo "$files - file deleted" >>.girt/status.txt
+        fi
+    else
+        echo "$files - deleted" >>.girt/status.txt
+    fi
+done
+deleted=$(find ".girt/index/" "." "." -printf '%P\n' | sort | uniq -u)
+for files in $deleted
+do
+    file=$(echo $files | sed "s/.girt\/index\///")
+    if (! test -f .girt/repository/$count/$file)
+    then
+        echo "$file - added to index, file deleted" >>.girt/status.txt
+    fi
+done
+cat ".girt/status.txt" | sort

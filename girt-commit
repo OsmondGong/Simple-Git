@@ -1,36 +1,55 @@
 #!/bin/dash
 count=$(wc -l < .girt/message.txt)
-if (test $1 = "-m")
-then
-    echo "$count $2" >>.girt/message.txt
-elif (test $1 = "-a")
+
+if (test $1 = '-a')
 then
     for files in .girt/index/*
     do
         fileAdd=$(echo $files | sed "s/.girt\/index\///")
         girt-add $fileAdd
     done
-    echo "$count $3" >>.girt/message.txt
 fi
-mkdir .girt/repository/$count
+
 change=0
+
+if (test $(diff -q ".girt/index/" ".girt/repository/$((count-1))/" | wc -l) -gt 0) > /dev/null 2>&1
+then
+    change=1
+fi
+
 for files in .girt/index/*
 do
     fileName=$(echo $files | sed "s/.girt\/index\//.girt\/repository\/$((count - 1))\//")
-    if (! cmp -s $files $fileName) > /dev/null 2>&1
+    if (! cmp -s $files $fileName && test -f $files) > /dev/null 2>&1
     then
         change=1
+    fi
+    if (test $change -eq 1)
+    then
         break
     fi
 done
+
 if (test $change -eq 0)
 then
     echo "nothing to commit"
     exit
 fi
+
+if (test $1 = "-m")
+then
+    echo "$count $2" >>.girt/message.txt
+elif (test $1 = "-a")
+then
+    echo "$count $3" >>.girt/message.txt
+fi
+
+mkdir .girt/repository/$count
+
 for files in .girt/index/*
 do
     fileName=$(echo $files | sed "s/.girt\/index\//.girt\/repository\/$count\//")
-    cp "$files" "$fileName"
+    cp "$files" "$fileName" > /dev/null 2>&1
 done
+
 echo "Committed as commit $count"

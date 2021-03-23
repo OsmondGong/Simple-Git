@@ -1,0 +1,62 @@
+#!/bin/dash
+force=0
+cached=0
+count=$(($(wc -l < .girt/message.txt)-1))
+for option in $@
+do
+    if (test $option = '--force')
+    then
+        force=1
+    elif (test $option = '--cached')
+    then
+        cached=1
+    fi
+done
+for files in $@
+do
+    if (! test $files = '--cached' && ! test $files = '--force' && test -f $files)
+    then
+        if (! test $force -eq 1)
+        then
+            if (test $count -eq -1 || ! cmp -s ".girt/index/$files" ".girt/repository/$count/$files" \
+                && ! (cmp "$files" ".girt/index/$files" && test $cached -eq 1)) > /dev/null 2>&1
+            then
+                if (cmp -s "$files" ".girt/index/$files") 2>/dev/null
+                then
+                    echo "girt-rm: error: '$files' has staged changes in the index"
+                    exit 1
+                elif (! test -f ".girt/index/$files")
+                then 
+                    echo "girt-rm: error: '$files' is not in the girt repository"
+                    exit 1
+                else 
+                    echo "girt-rm: error: '$files' in index is different to both to the working file and the repository"
+                    exit 1
+                fi
+            fi
+            if (test $cached -eq 0)
+            then
+                if (test $count -eq -1 || ! cmp -s "$files" ".girt/index/$files")  > /dev/null 2>&1
+                then
+                    if (! test -f ".girt/repository/$count/$files")
+                    then
+                        echo "girt-rm: error: '$files' is not in the girt repository"
+                        exit 1
+                    else
+                        echo "girt-rm: error: '$files' in the repository is different to the working file"
+                        exit 1
+                    fi
+                fi
+            fi
+        elif (test $force -eq 1 && ! test -f ".girt/index/$files")
+        then
+            echo "girt-rm: error: '$files' is not in the girt repository"
+            exit 1
+        fi
+        rm ".girt/index/$files" 2>/dev/null
+        if (test $cached -eq 0)
+        then
+            rm $files 2>/dev/null
+        fi
+    fi
+done
