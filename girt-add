@@ -1,7 +1,15 @@
 #!/bin/dash
+if (! test -d .girt)
+then
+    echo "girt-add: error: girt repository directory .girt not found"
+    exit 1
+fi
 for files in $@
 do
-    if (test -f $files) 
+    if (! test $(echo $files | grep -e '^[a-zA-Z0-9][a-zA-Z0-9_.-]*$')) 
+    then
+        echo "girt-add: error: invalid filename '$files'"
+    elif (test -f $files) 
     then
         if (! cp $files .girt/index/$files) > /dev/null 2>&1
         then
@@ -10,6 +18,7 @@ do
         fi
     elif (test -f .girt/index/$files)
     then
+        # special scenario where the file in current directory was deleted but is still in index
         rm .girt/index/$files
     else
         echo "girt-add: error: can not open '$files'"

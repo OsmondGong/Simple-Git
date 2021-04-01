@@ -1,5 +1,9 @@
 #!/bin/dash
-if (test -d .girt)
+if (test $# != 0)
+then
+    echo "usage: girt-init"
+    exit 1
+elif (test -d .girt)
 then
     echo "girt-init: error: .girt already exists"
     exit 1
@@ -7,5 +11,8 @@ fi
 mkdir .girt
 mkdir .girt/index
 mkdir .girt/repository
+mkdir .girt/branch
+mkdir .girt/branch/master
 echo -n "" > .girt/message.txt
+echo "master" > .girt/branchname.txt
 echo "Initialized empty girt repository in .girt"

@@ -1,0 +1,38 @@
+#!/bin/dash
+if (test $# -ne 1)
+then
+    echo "usage: girt-checkout <branch>"
+    exit
+fi
+
+current=$(cat .girt/branchname.txt)
+if (test "$current" = "$1")
+then
+    echo "Already on '$1'"
+    exit
+fi
+
+for branches in .girt/branch/*
+do
+    if (test "$1" = "$branches")
+    then
+        echo "girt-checkout: error: unknown branch '$1'"
+        exit
+    fi
+done
+
+find . -maxdepth 1 -type f ! -name "girt-*" -a ! -name "test*.sh" -a ! -name "diary.txt" -exec cp -t .girt/branch/$current {} +
+rm -r .girt/branch/$current/.girt/index .girt/branch/$current/.girt/repository
+cp -r .girt/index/ .girt/branch/$current/.girt/index
+cp -r .girt/repository/ .girt/branch/$current/.girt/repository
+cp .girt/message.txt .girt/branch/$current/.girt/message.txt
+
+find .girt/branch/$1 -maxdepth 1 -type f ! -name "girt-*" -a ! -name "test*.sh" -a ! -name "diary.txt" -exec cp -t . {} +
+rm -r .girt/index .girt/repository
+cp -r .girt/branch/$1/.girt/index .girt/index/ 
+cp -r .girt/branch/$1/.girt/repository .girt/repository/
+cp .girt/branch/$1/.girt/message.txt .girt/message.txt
+
+echo "$1" >.girt/branchname.txt
+
+echo "Switched to branch '$1'"

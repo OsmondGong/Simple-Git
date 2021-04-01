@@ -1,4 +1,11 @@
 #!/bin/dash
+
+if (test $# -gt 3 || test $# -lt 2) 
+then
+    echo "usage: girt-commit [-a] -m commit-message"
+    exit 1
+fi
+
 count=$(wc -l < .girt/message.txt)
 
 if (test $1 = '-a')
@@ -30,19 +37,31 @@ do
     fi
 done
 
+if (test $1 = "-m")
+then
+    if (test $# -ne 2)
+    then
+        echo "usage: girt-commit [-a] -m commit-message"
+        exit 1
+    fi
+    message="$count $2"
+elif (test $1 = "-a")
+then
+    if (test $2 != "-m" || test $# -ne 3)
+    then
+        echo "usage: girt-commit [-a] -m commit-message"
+        exit 1
+    fi
+    message="$count $3"
+fi
+
 if (test $change -eq 0)
 then
     echo "nothing to commit"
     exit
 fi
 
-if (test $1 = "-m")
-then
-    echo "$count $2" >>.girt/message.txt
-elif (test $1 = "-a")
-then
-    echo "$count $3" >>.girt/message.txt
-fi
+echo $message >>.girt/message.txt
 
 mkdir .girt/repository/$count
 
