@@ -1,6 +1,6 @@
 #!/bin/dash
 echo -n "" >.girt/status.txt
-count=$(($(wc -l < .girt/message.txt)-1))
+count=$(cat .girt/message.txt | cut -d " " -f1 | tail -n 1)
 for files in `ls`
 do
     if (! test -f .girt/index/$files)

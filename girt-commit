@@ -6,14 +6,14 @@ then
     exit 1
 fi
 
-count=$(wc -l < .girt/message.txt)
+count=$(ls .girt/repository/ | wc -l)
 
 if (test $1 = '-a')
 then
     for files in .girt/index/*
     do
         fileAdd=$(echo $files | sed "s/.girt\/index\///")
-        girt-add $fileAdd
+        ../girt-add $fileAdd
     done
 fi
 
@@ -70,5 +70,7 @@ do
     fileName=$(echo $files | sed "s/.girt\/index\//.girt\/repository\/$count\//")
     cp "$files" "$fileName" > /dev/null 2>&1
 done
+
+cp .girt/message.txt .girt/commitPath/$count
 
 echo "Committed as commit $count"

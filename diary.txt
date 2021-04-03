@@ -4,3 +4,4 @@ Date        Start       Stop        Activity        Comments
 23/03       07:31       16:48       coding          implemented subset 1
 01/04       19:30       00:10       tests & coding  implemented test00.sh to test06.sh and added error checking subsets 0 and 1
 02/04       02:30       04:30       coding          implemented girt-branch and started girt-checkout
+03/04       19:33       08:51       coding          implemented girt-merge and patched files in subset 0 and 1 for girt-merge

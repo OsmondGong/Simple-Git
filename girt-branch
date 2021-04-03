@@ -15,19 +15,18 @@ then
         echo "girt-branch: error: branch name required"
         exit
     fi
+    if (! test $(echo $1 | grep -e '^[a-zA-Z0-9][a-zA-Z0-9_-]*$'))
+    then
+        echo "girt-branch: error: invalid branch name '$1'"
+        exit 1
+    fi
     if (test -d .girt/branch/$1)
     then
         echo "girt-branch: error: branch '$1' already exists"
         exit
     fi
     mkdir .girt/branch/$1
-    mkdir .girt/branch/$1/.girt
-    mkdir .girt/branch/$1/.girt/index
-    mkdir .girt/branch/$1/.girt/repository
-    find . -maxdepth 1 -type f ! -name "girt-*" -a ! -name "test*.sh" -a ! -name "diary.txt" -exec cp -t .girt/branch/$1 {} +
-    cp -r .girt/index/ .girt/branch/$1/.girt/index
-    cp -r .girt/repository/ .girt/branch/$1/.girt/repository
-    cp .girt/message.txt .girt/branch/$1/.girt/message.txt
+    cp .girt/message.txt .girt/branch/$1/message.txt
 elif (test $# -eq 2 && test $1 = '-d')
 then
     if (test $2 = 'master')
@@ -36,11 +35,48 @@ then
         exit
     elif (test -d .girt/branch/$2)
     then
-        rm -r .girt/branch/$2
-        echo "Deleted branch '$2'"
-        exit
+        if (test "$(cat .girt/branchname.txt)" = "$2") 
+        then
+            echo "girt-branch: error: internal error error: Cannot delete branch '$2'"
+            exit 1
+        fi
+        commitNo=$(cat .girt/branch/$2/message.txt | cut -d " " -f1 | tail -n 1)
+
+        curCommitNo=$(cat .girt/message.txt | cut -d " " -f1 | tail -n 1)
+
+        currPath=$(tac .girt/commitPath/$curCommitNo | cut -d " " -f1 )
+        mergePath=$(tac .girt/commitPath/$commitNo | cut -d " " -f1 )
+        comCurr=""
+
+        for comCurr in $currPath
+        do
+            for comMerg in $mergePath
+            do
+                if (test $comCurr = $comMerg)
+                then
+                    commonCommit="$comCurr"
+                    break
+                elif (test $comCurr -gt $comMerg)
+                then
+                    break
+                fi
+            done
+            if (test "$comCurr"!="") then
+                break
+            fi
+        done
+
+        if (test "$commonCommit" -eq "$commitNo")
+        then
+            rm -r .girt/branch/$2
+            echo "Deleted branch '$2'"
+            exit
+        fi
+        echo "girt-branch: error: branch '$2' has unmerged changes"
+        exit 1
     fi
     echo "girt-branch: error: branch '$2' doesn't exist"
 else
     echo "usage: girt-branch [-d] <branch>"
 fi
+

@@ -12,27 +12,138 @@ then
     exit
 fi
 
-for branches in .girt/branch/*
+if (! test -d .girt/branch/$1)
+then
+    echo "girt-checkout: error: unknown branch '$1'"
+    exit
+fi
+
+count=$(cat .girt/message.txt | cut -d " " -f1 | tail -n 1)
+newcount=$(cat .girt/branch/$1/message.txt | cut -d " " -f1 | tail -n 1)
+
+overwritten=0
+
+for file in .girt/repository/$count/*
 do
-    if (test "$1" = "$branches")
+    # ensures each file echoes once upon overwrite error
+    echoamount=0
+    filename=$(echo $file | sed "s|.girt/repository/$count/||")
+    if (test -f .girt/repository/$newcount/$filename && ! cmp -s ".girt/repository/$newcount/$filename" "$file")
     then
-        echo "girt-checkout: error: unknown branch '$1'"
-        exit
+        if (test -f $filename && ! cmp -s "$filename" "$file")
+        then
+            if (test $overwritten -eq 0)
+            then
+                overwritten=1
+                echoamount=1
+                echo "girt-checkout: error: Your changes to the following files would be overwritten by checkout:"
+                echo "$filename" >>.girt/overwritten.txt
+            else
+                echo "$filename" >>.girt/overwritten.txt
+            fi
+        fi
+        if (test -f .girt/index/$filename && test $echoamount -eq 0 && ! cmp -s ".girt/index/$filename" "$file")
+        then
+            if (test $overwritten -eq 0)
+            then
+                overwritten=1
+                echo "girt-checkout: error: Your changes to the following files would be overwritten by checkout:"
+                echo "$filename" >>.girt/overwritten.txt
+            else
+                echo "$filename" >>.girt/overwritten.txt
+            fi
+        fi
     fi
 done
+files=$(diff -r . .girt/repository/$count/ | grep "Only in .: " | sed "s/Only in .://")
+for file in $files
+do
+    echoamount=0
+    if (test -f .girt/repository/$newcount/$file)
+    then
+        if (test $overwritten -eq 0)
+        then
+            overwritten=1
+            echoamount=1
+            echo "girt-checkout: error: Your changes to the following files would be overwritten by checkout:"
+            echo "$file" >>.girt/overwritten.txt
+        else
+            echo "$file" >>.girt/overwritten.txt
+        fi
+    fi
+done
+files=$(diff -r .girt/index/ .girt/repository/$count/ | grep "Only in .girt/index/: " | sed "s|Only in .girt/index/:||")
+for file in $files
+do
+    echoamount=0
+    if (test -f .girt/repository/$newcount/$file)
+    then
+        if (test $overwritten -eq 0)
+        then
+            overwritten=1
+            echoamount=1
+            echo "girt-checkout: error: Your changes to the following files would be overwritten by checkout:"
+            echo "$file" >>.girt/overwritten.txt
+        else
+            echo "$file" >>.girt/overwritten.txt
+        fi
+    fi
+done
+if (test $overwritten -eq 1)
+then
+    cat .girt/overwritten.txt | sort | uniq
+    rm .girt/overwritten.txt
+    exit
+fi
 
-find . -maxdepth 1 -type f ! -name "girt-*" -a ! -name "test*.sh" -a ! -name "diary.txt" -exec cp -t .girt/branch/$current {} +
-rm -r .girt/branch/$current/.girt/index .girt/branch/$current/.girt/repository
-cp -r .girt/index/ .girt/branch/$current/.girt/index
-cp -r .girt/repository/ .girt/branch/$current/.girt/repository
-cp .girt/message.txt .girt/branch/$current/.girt/message.txt
+if (! cmp -s ".girt/message.txt" ".girt/branch/$current/message.txt") 
+then
+    cp .girt/message.txt .girt/branch/$current/message.txt 2>/dev/null
+    cp .girt/message.txt .girt/branch/$current/message.txt 2>/dev/null
+fi
 
-find .girt/branch/$1 -maxdepth 1 -type f ! -name "girt-*" -a ! -name "test*.sh" -a ! -name "diary.txt" -exec cp -t . {} +
-rm -r .girt/index .girt/repository
-cp -r .girt/branch/$1/.girt/index .girt/index/ 
-cp -r .girt/branch/$1/.girt/repository .girt/repository/
-cp .girt/branch/$1/.girt/message.txt .girt/message.txt
+if (! cmp -s ".girt/message.txt" ".girt/branch/$1/message.txt")
+then
+    echo -n "" >_deletedCurDir
+    echo -n "" >_deletedIndex
 
+    for file in .girt/repository/$count/*
+    do
+        filename=$(echo $file | sed "s|.girt/repository/$count/||")
+        if (test -f $filename)
+        then
+            rm $filename 2>/dev/null
+        else
+            echo "$filename" >>_deletedCurDir
+        fi
+        if (test -f .girt/index/$filename)
+        then
+            rm .girt/index/$filename 2>/dev/null
+        else
+            echo "$filename" >>_deletedIndex
+        fi
+    done
+
+    cp .girt/branch/$1/message.txt .girt/message.txt 2>/dev/null
+
+    count=$(cat .girt/message.txt | cut -d " " -f1 | tail -n 1)
+
+    for file in .girt/repository/$count/*
+    do
+        filename=$(echo $file | sed "s|.girt/repository/$count/||")
+        if (! cat _deletedCurDir | egrep -q "^$filename$") 
+        then
+            cp $file $filename 2>/dev/null
+        fi
+        if (! cat _deletedIndex | egrep -q "$filename$") 
+        then
+            cp $file .girt/index/$filename 2>/dev/null
+        fi
+    done
+
+    rm _deletedCurDir
+    rm _deletedIndex
+fi
 echo "$1" >.girt/branchname.txt
 
 echo "Switched to branch '$1'"

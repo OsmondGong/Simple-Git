@@ -1,7 +1,7 @@
 #!/bin/dash
 force=0
 cached=0
-count=$(($(wc -l < .girt/message.txt)-1))
+count=$(cat .girt/message.txt | cut -d " " -f1 | tail -n 1)
 for option in $@
 do
     if (test $option = '--force')
@@ -53,6 +53,12 @@ do
             echo "girt-rm: error: '$files' is not in the girt repository"
             exit 1
         fi
+    fi
+done
+for files in $@
+do
+    if (! test $files = '--cached' && ! test $files = '--force')
+    then
         rm ".girt/index/$files" 2>/dev/null
         if (test $cached -eq 0)
         then

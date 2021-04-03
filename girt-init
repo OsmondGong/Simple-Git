@@ -11,8 +11,10 @@ fi
 mkdir .girt
 mkdir .girt/index
 mkdir .girt/repository
+mkdir .girt/commitPath
 mkdir .girt/branch
 mkdir .girt/branch/master
 echo -n "" > .girt/message.txt
 echo "master" > .girt/branchname.txt
+echo -n "" > .girt/branch/master/message.txt
 echo "Initialized empty girt repository in .girt"

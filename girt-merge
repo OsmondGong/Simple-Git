@@ -1,1 +1,125 @@
 #!/bin/dash
+if (test $# -eq 1)
+then
+    if (test $1 = '-m')
+    then
+        echo "usage: girt-merge <branch|commit> -m message"
+        exit 1
+    fi
+    echo "girt-merge: error: empty commit message"
+    exit 1
+fi
+
+if (test $# -ne 3)
+then
+    echo "usage: girt-merge <branch|commit> -m message"
+    exit 1
+fi
+if (test "$1" = '-m')
+then
+    message=$2
+    commit=$3
+elif (test "$2" = '-m')
+then
+    message=$3
+    commit=$1
+else
+    echo "usage: girt-merge <branch|commit> -m message"
+    exit 1
+fi
+
+if (test $(echo $commit | grep '[0-9]+'))
+then
+    if (! test -d ".girt/repository/$commit")
+    then
+        echo "girt-merge: error: unknown commit '$commit'"
+        exit 1
+    fi
+    commitNo=$commit
+else
+    if (! test -d ".girt/branch/$commit")
+    then
+        echo "girt-merge: error: unknown branch '$commit'"
+        exit 1
+    elif (test "$(cat .girt/branchname.txt)" = "$commit") 
+    then
+        echo "Already up to date"
+        exit
+    fi
+    commitNo=$(tail -n 1 .girt/branch/$commit/message.txt | cut -d " " -f1 )
+fi
+curCommitNo=$(tail -n 1 .girt/message.txt | cut -d " " -f1 )
+
+currPath=$(tac .girt/commitPath/$curCommitNo | cut -d " " -f1 )
+mergePath=$(tac .girt/commitPath/$commitNo | cut -d " " -f1 )
+commonCommit=-1
+
+for comCurr in $currPath
+do
+    for comMerg in $mergePath
+    do
+        if (test $comCurr -eq $comMerg)
+        then
+            commonCommit=$comCurr
+            break
+        elif (test $comCurr -gt $comMerg)
+        then
+            break
+        fi
+    done
+    if (test $commonCommit -ne -1) then
+        break
+    fi
+done
+
+if (test "$commonCommit" -eq "$commitNo")
+then
+    echo "Already up to date"
+    exit
+fi
+
+for file in .girt/repository/$commitNo/*
+do
+    filename=$(echo "$file" | sed "s|.girt/repository/$commitNo/||")
+    if (! cmp -s "$file" ".girt/repository/$commonCommit/$filename")
+    then
+        echo "$filename" >>.girt/changes.txt
+    fi
+done
+
+for file in .girt/repository/$curCommitNo/*
+do
+    filename=$(echo "$file" | sed "s|.girt/repository/$curCommitNo/||")
+    if (! cmp -s "$file" ".girt/repository/$commonCommit/$filename")
+    then
+        if (test $(cat ".girt/changes.txt" | grep -e "^$filename$"))
+        then
+            echo "girt-merge: error: can not merge"
+            rm .girt/changes.txt
+            exit 1
+        fi
+    fi
+done
+
+if (test "$curCommitNo" -eq "$commonCommit")
+then
+    cp .girt/commitPath/$commitNo .girt/message.txt
+    for file in $(cat .girt/changes.txt)
+    do
+        cp .girt/repository/$commitNo/$file $file
+        ../girt-add $file
+    done
+    echo "Fast-forward: no commit created"
+    rm .girt/changes.txt
+    exit
+fi
+for file in $(cat .girt/changes.txt)
+do
+    cp .girt/repository/$commitNo/$file $file
+    ../girt-add $file
+done
+../girt-commit -m "$message"
+sort -n .girt/message.txt .girt/commitPath/$commitNo | uniq >.girt/temp.txt
+cp .girt/temp.txt .girt/message.txt
+rm .girt/temp.txt
+rm .girt/changes.txt
