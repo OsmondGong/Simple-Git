@@ -1,13 +1,22 @@
 #!/bin/dash
+# outputs error message if .girt was not initiated
+if (! test -d .girt)
+then
+    echo "girt-commit: error: girt repository directory .girt not found"
+    exit 1
+fi
 
+# ensures number of arguments is valid
 if (test $# -gt 3 || test $# -lt 2) 
 then
     echo "usage: girt-commit [-a] -m commit-message"
     exit 1
 fi
 
+# gets total amount of commits
 count=$(ls .girt/repository/ | wc -l)
 
+# causes all files already in the index to have their contents from the current directory added to the index before the commit
 if (test $1 = '-a')
 then
     for files in .girt/index/*
@@ -17,13 +26,16 @@ then
     done
 fi
 
+# bool to see if there is anything to commit
 change=0
 
+# if there is a file in index but not in repository there is something to commit
 if (test $(diff -q ".girt/index/" ".girt/repository/$((count-1))/" | wc -l) -gt 0) > /dev/null 2>&1
 then
     change=1
 fi
 
+# checks if there is anything to commit
 for files in .girt/index/*
 do
     fileName=$(echo $files | sed "s/.girt\/index\//.girt\/repository\/$((count - 1))\//")
@@ -37,6 +49,7 @@ do
     fi
 done
 
+# checks if girt-commit usage is correct
 if (test $1 = "-m")
 then
     if (test $# -ne 2)
@@ -55,14 +68,17 @@ then
     message="$count $3"
 fi
 
+# exits if there is nothing to commit
 if (test $change -eq 0)
 then
     echo "nothing to commit"
     exit
 fi
 
+# store message in file
 echo $message >>.girt/message.txt
 
+# creates a directory in repository that stores all files in each commit
 mkdir .girt/repository/$count
 
 for files in .girt/index/*
@@ -71,6 +87,7 @@ do
     cp "$files" "$fileName" > /dev/null 2>&1
 done
 
+# copy files into commitPath directory where all path of commits are stored
 cp .girt/message.txt .girt/commitPath/$count
 
 echo "Committed as commit $count"

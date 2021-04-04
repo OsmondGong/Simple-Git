@@ -1,4 +1,11 @@
 #!/bin/dash
+# outputs error message if .girt was not initiated
+if (! test -d .girt)
+then
+    echo "girt-merge: error: girt repository directory .girt not found"
+    exit 1
+fi
+# checks girt-merge usage
 if (test $# -eq 1)
 then
     if (test $1 = '-m')
@@ -9,12 +16,13 @@ then
     echo "girt-merge: error: empty commit message"
     exit 1
 fi
-
 if (test $# -ne 3)
 then
     echo "usage: girt-merge <branch|commit> -m message"
     exit 1
 fi
+
+# get merge message and branch/commit number depending on argument order
 if (test "$1" = '-m')
 then
     message=$2
@@ -28,6 +36,7 @@ else
     exit 1
 fi
 
+# get commit number for merge
 if (test $(echo $commit | grep '[0-9]+'))
 then
     if (! test -d ".girt/repository/$commit")
@@ -48,12 +57,16 @@ else
     fi
     commitNo=$(tail -n 1 .girt/branch/$commit/message.txt | cut -d " " -f1 )
 fi
+# get last commit number of current branch 
 curCommitNo=$(tail -n 1 .girt/message.txt | cut -d " " -f1 )
 
+# get commit path for both the current branch's commit and the provided commit
 currPath=$(tac .girt/commitPath/$curCommitNo | cut -d " " -f1 )
 mergePath=$(tac .girt/commitPath/$commitNo | cut -d " " -f1 )
+
 commonCommit=-1
 
+# get the last common commit
 for comCurr in $currPath
 do
     for comMerg in $mergePath
@@ -72,12 +85,14 @@ do
     fi
 done
 
+# if the provided commit number is the same as the common commit number then the branch is already up to date
 if (test "$commonCommit" -eq "$commitNo")
 then
     echo "Already up to date"
     exit
 fi
 
+# store all files that were changed since the common commit to the provided commit into changes.txt
 for file in .girt/repository/$commitNo/*
 do
     filename=$(echo "$file" | sed "s|.girt/repository/$commitNo/||")
@@ -87,6 +102,7 @@ do
     fi
 done
 
+# if the current directory has changes to the same files since the common commit then output merge conflict error
 for file in .girt/repository/$curCommitNo/*
 do
     filename=$(echo "$file" | sed "s|.girt/repository/$curCommitNo/||")
@@ -101,9 +117,11 @@ do
     fi
 done
 
+# if the common commit is the last current commit, a fast forward should occur
 if (test "$curCommitNo" -eq "$commonCommit")
 then
     cp .girt/commitPath/$commitNo .girt/message.txt
+    # add files to current directory and index
     for file in $(cat .girt/changes.txt)
     do
         cp .girt/repository/$commitNo/$file $file
@@ -113,6 +131,8 @@ then
     rm .girt/changes.txt
     exit
 fi
+
+# add files to current directory and index and commit changes
 for file in $(cat .girt/changes.txt)
 do
     cp .girt/repository/$commitNo/$file $file

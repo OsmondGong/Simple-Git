@@ -1,22 +1,44 @@
 #!/bin/dash
+# outputs error message if .girt was not initiated
+if (! test -d .girt)
+then
+    echo "girt-show: error: girt repository directory .girt not found"
+    exit 1
+fi
+if (test $# -ne 1)
+then
+    echo "heasdllo"
+    echo "usage: girt-show <commit>:<filename>"
+    exit 1
+fi
+# gets commit number and file
 commitNo=$(echo $1 | cut -d ':' -f 1)
 fileName=$(echo $1 | cut -d ':' -f 2)
-if (! test $commitNo -ge 0) > /dev/null 2>&1
+# invalid commit number
+if (! test $commitNo -ge 0 && ! test -z $commitNo) > /dev/null 2>&1
 then
-    if (! cat .girt/index/$fileName) 2>/dev/null
-    then
-        echo "girt-show: error: '$fileName' not found in index"
-        exit 1
-    fi
+    echo "usage: girt-show <commit>:<filename>"
+    exit 1
+# commit not in repository
+elif (! test -d .girt/repository/$commitNo && ! test -z $commitNo) 2>/dev/null
+then
+    echo "girt-show: error: unknown commit '$commitNo'"
+    exit 1
 else
-    if (! cat .girt/repository/$commitNo/$fileName) 2>/dev/null
+    # prints file content from index if no commit number provided
+    if (test -z $commitNo)
     then
-        if (! test -d .girt/repository/$commitNo)
+        if (! cat .girt/index/$fileName) 2>/dev/null
         then
-            echo "girt-show: error: unknown commit '$commitNo'"
-        else
-            echo "girt-show: error: '$fileName' not found in commit $commitNo"
+            # if file does not exist output error
+            echo "girt-show: error: '$fileName' not found in index"
+            exit 1
         fi
+    # prints content of file in repository
+    elif (! cat .girt/repository/$commitNo/$fileName) 2>/dev/null
+    then
+        # if file does not exist output error
+        echo "girt-show: error: '$fileName' not found in commit $commitNo"
         exit 1
     fi
 fi

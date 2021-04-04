@@ -1,115 +1,149 @@
 #!/bin/dash
+# outputs error message if .girt was not initiated
+if (! test -d .girt)
+then
+    echo "girt-checkout: error: girt repository directory .girt not found"
+    exit 1
+fi
+
+# improper usage
 if (test $# -ne 1)
 then
     echo "usage: girt-checkout <branch>"
     exit
 fi
-
 current=$(cat .girt/branchname.txt)
+
+# checkout to current branch
 if (test "$current" = "$1")
 then
     echo "Already on '$1'"
     exit
 fi
 
+# error for non-existent branch
 if (! test -d .girt/branch/$1)
 then
     echo "girt-checkout: error: unknown branch '$1'"
     exit
 fi
 
-count=$(cat .girt/message.txt | cut -d " " -f1 | tail -n 1)
-newcount=$(cat .girt/branch/$1/message.txt | cut -d " " -f1 | tail -n 1)
+# get last commit number for current branch and checkout branch
+currCom=$(cat .girt/message.txt | cut -d " " -f1 | tail -n 1)
+checkoutCom=$(cat .girt/branch/$1/message.txt | cut -d " " -f1 | tail -n 1)
 
+# bool for if checkout would lead to overwrite
 overwritten=0
 
-for file in .girt/repository/$count/*
+# check for overwrite error
+for file in .girt/repository/$currCom/*
 do
-    # ensures each file echoes once upon overwrite error
-    echoamount=0
-    filename=$(echo $file | sed "s|.girt/repository/$count/||")
-    if (test -f .girt/repository/$newcount/$filename && ! cmp -s ".girt/repository/$newcount/$filename" "$file")
+    filename=$(echo $file | sed "s|.girt/repository/$currCom/||")
+    # get all existing files that are not the same in both commits
+    if (test -f .girt/repository/$checkoutCom/$filename && ! cmp -s ".girt/repository/$checkoutCom/$filename" "$file")
     then
+        # if the file has been changed since the last commit output overwrite error
         if (test -f $filename && ! cmp -s "$filename" "$file")
         then
+            # ensures error message is printed once
             if (test $overwritten -eq 0)
             then
                 overwritten=1
                 echoamount=1
                 echo "girt-checkout: error: Your changes to the following files would be overwritten by checkout:"
+                # all overwritten files are stored in text file
                 echo "$filename" >>.girt/overwritten.txt
             else
+                # all overwritten files are stored in text file
                 echo "$filename" >>.girt/overwritten.txt
             fi
         fi
-        if (test -f .girt/index/$filename && test $echoamount -eq 0 && ! cmp -s ".girt/index/$filename" "$file")
+        if (test -f .girt/index/$filename && ! cmp -s ".girt/index/$filename" "$file")
         then
+            # ensures error message is printed once
             if (test $overwritten -eq 0)
             then
                 overwritten=1
                 echo "girt-checkout: error: Your changes to the following files would be overwritten by checkout:"
+                # all overwritten files are stored in text file
                 echo "$filename" >>.girt/overwritten.txt
             else
+                # all overwritten files are stored in text file
                 echo "$filename" >>.girt/overwritten.txt
             fi
         fi
     fi
 done
-files=$(diff -r . .girt/repository/$count/ | grep "Only in .: " | sed "s/Only in .://")
+
+# gets all files that has not been committed in current directory
+files=$(diff -r . .girt/repository/$currCom/ | grep "Only in .: " | sed "s/Only in .://")
 for file in $files
 do
-    echoamount=0
-    if (test -f .girt/repository/$newcount/$file)
+    # if the file is in checkout commit output overwrite error
+    if (test -f .girt/repository/$checkoutCom/$file)
     then
+        # ensures error message is printed once
         if (test $overwritten -eq 0)
         then
             overwritten=1
-            echoamount=1
             echo "girt-checkout: error: Your changes to the following files would be overwritten by checkout:"
+            # all overwritten files are stored in text file
             echo "$file" >>.girt/overwritten.txt
         else
+            # all overwritten files are stored in text file
             echo "$file" >>.girt/overwritten.txt
         fi
     fi
 done
-files=$(diff -r .girt/index/ .girt/repository/$count/ | grep "Only in .girt/index/: " | sed "s|Only in .girt/index/:||")
+
+# gets all files that has not been committed in index
+files=$(diff -r .girt/index/ .girt/repository/$currCom/ | grep "Only in .girt/index/: " | sed "s|Only in .girt/index/:||")
 for file in $files
 do
-    echoamount=0
-    if (test -f .girt/repository/$newcount/$file)
+    # if the file is in checkout commit output overwrite error
+    if (test -f .girt/repository/$checkoutCom/$file)
     then
+        # ensures error message is printed once
         if (test $overwritten -eq 0)
         then
             overwritten=1
-            echoamount=1
             echo "girt-checkout: error: Your changes to the following files would be overwritten by checkout:"
+            # all overwritten files are stored in text file
             echo "$file" >>.girt/overwritten.txt
         else
+            # all overwritten files are stored in text file
             echo "$file" >>.girt/overwritten.txt
         fi
     fi
 done
 if (test $overwritten -eq 1)
 then
+    # prints all files that would be overwritten
     cat .girt/overwritten.txt | sort | uniq
     rm .girt/overwritten.txt
-    exit
+    exit 1
 fi
 
+# saves all commit into current branch directory if there had been any commits
 if (! cmp -s ".girt/message.txt" ".girt/branch/$current/message.txt") 
 then
     cp .girt/message.txt .girt/branch/$current/message.txt 2>/dev/null
     cp .girt/message.txt .girt/branch/$current/message.txt 2>/dev/null
 fi
 
+# if branches are on different commits, files in current directory and index are updated
+# to the files in the new branch
 if (! cmp -s ".girt/message.txt" ".girt/branch/$1/message.txt")
 then
+    # deleted files remain deleted upon checkout
     echo -n "" >_deletedCurDir
     echo -n "" >_deletedIndex
 
-    for file in .girt/repository/$count/*
+    # deletes all files that are different between the two branches
+    # and replace them with files in checkout branch
+    for file in .girt/repository/$currCom/*
     do
-        filename=$(echo $file | sed "s|.girt/repository/$count/||")
+        filename=$(echo $file | sed "s|.girt/repository/$currCom/||")
         if (test -f $filename)
         then
             rm $filename 2>/dev/null
@@ -126,11 +160,11 @@ then
 
     cp .girt/branch/$1/message.txt .girt/message.txt 2>/dev/null
 
-    count=$(cat .girt/message.txt | cut -d " " -f1 | tail -n 1)
+    currCom=$(cat .girt/message.txt | cut -d " " -f1 | tail -n 1)
 
-    for file in .girt/repository/$count/*
+    for file in .girt/repository/$currCom/*
     do
-        filename=$(echo $file | sed "s|.girt/repository/$count/||")
+        filename=$(echo $file | sed "s|.girt/repository/$currCom/||")
         if (! cat _deletedCurDir | egrep -q "^$filename$") 
         then
             cp $file $filename 2>/dev/null
@@ -144,6 +178,7 @@ then
     rm _deletedCurDir
     rm _deletedIndex
 fi
+# change branch name to checkout branch
 echo "$1" >.girt/branchname.txt
 
 echo "Switched to branch '$1'"

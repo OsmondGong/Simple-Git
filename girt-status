@@ -1,6 +1,14 @@
 #!/bin/dash
+# outputs error message if .girt was not initiated
+if (! test -d .girt)
+then
+    echo "girt-status: error: girt repository directory .girt not found"
+    exit 1
+fi
+# create file where output is stored
 echo -n "" >.girt/status.txt
 count=$(cat .girt/message.txt | cut -d " " -f1 | tail -n 1)
+# get status of all files in current directory
 for files in `ls`
 do
     if (! test -f .girt/index/$files)
@@ -29,6 +37,7 @@ do
         echo "$files - same as repo" >>.girt/status.txt
     fi
 done
+# get status of all files in repository but not in current directory
 deleted=$(find ".girt/repository/$count/" "." "." -printf '%P\n' | sort | uniq -u)
 for files in $deleted
 do
@@ -44,6 +53,7 @@ do
         echo "$files - deleted" >>.girt/status.txt
     fi
 done
+# get status of all files in index but not in current directory
 deleted=$(find ".girt/index/" "." "." -printf '%P\n' | sort | uniq -u)
 for files in $deleted
 do
@@ -53,4 +63,5 @@ do
         echo "$file - added to index, file deleted" >>.girt/status.txt
     fi
 done
+# prints status
 cat ".girt/status.txt" | sort

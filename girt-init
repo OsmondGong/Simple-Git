@@ -1,13 +1,16 @@
 #!/bin/dash
+# outputs error if an argument is provided
 if (test $# != 0)
 then
     echo "usage: girt-init"
     exit 1
 elif (test -d .girt)
 then
+    # outputs error if .girt directory has already been created
     echo "girt-init: error: .girt already exists"
     exit 1
 fi
+# initialise all files used in girt
 mkdir .girt
 mkdir .girt/index
 mkdir .girt/repository

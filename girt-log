@@ -1,2 +1,9 @@
 #!/bin/dash
+# outputs error message if .girt was not initiated
+if (! test -d .girt)
+then
+    echo "girt-log: error: girt repository directory .girt not found"
+    exit 1
+fi
+# prints all commit messages
 tac .girt/message.txt

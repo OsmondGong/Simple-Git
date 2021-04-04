@@ -1,9 +1,17 @@
 #!/bin/dash
+# outputs error message if .girt was not initiated
+if (! test -d .girt)
+then
+    echo "girt-branch: error: girt repository directory .girt not found"
+    exit 1
+fi
+# branch can only be run after first commit
 if (test -z "$(cat .girt/message.txt)") 
 then
     echo "girt-branch: error: this command can not be run until after the first commit"
     exit 1
 fi
+# prints all branch names
 if (test $# -eq 0)
 then
     ls -d .girt/branch/* | sed -e "s/.girt\/branch\///g"
@@ -13,59 +21,66 @@ then
     if (test $1 = '-d')
     then
         echo "girt-branch: error: branch name required"
-        exit
+        exit 1
     fi
+    # ensures branch name is valid
     if (! test $(echo $1 | grep -e '^[a-zA-Z0-9][a-zA-Z0-9_-]*$'))
     then
         echo "girt-branch: error: invalid branch name '$1'"
         exit 1
     fi
+    # checks if branch exists
     if (test -d .girt/branch/$1)
     then
         echo "girt-branch: error: branch '$1' already exists"
-        exit
+        exit 1
     fi
+    # creates branch
     mkdir .girt/branch/$1
     cp .girt/message.txt .girt/branch/$1/message.txt
 elif (test $# -eq 2 && test $1 = '-d')
 then
+    # can not delete master branch
     if (test $2 = 'master')
     then
         echo "girt-branch: error: can not delete branch 'master'"
-        exit
+        exit 1
+    # ensures branch exist
     elif (test -d .girt/branch/$2)
     then
+        # can not delete current branch
         if (test "$(cat .girt/branchname.txt)" = "$2") 
         then
             echo "girt-branch: error: internal error error: Cannot delete branch '$2'"
             exit 1
         fi
+        # ensure branch does not have unmerged changes
         commitNo=$(cat .girt/branch/$2/message.txt | cut -d " " -f1 | tail -n 1)
 
         curCommitNo=$(cat .girt/message.txt | cut -d " " -f1 | tail -n 1)
 
         currPath=$(tac .girt/commitPath/$curCommitNo | cut -d " " -f1 )
         mergePath=$(tac .girt/commitPath/$commitNo | cut -d " " -f1 )
-        comCurr=""
+        commonCommit=-1
 
         for comCurr in $currPath
         do
             for comMerg in $mergePath
             do
-                if (test $comCurr = $comMerg)
+                if (test $comCurr -eq $comMerg)
                 then
-                    commonCommit="$comCurr"
+                    commonCommit=$comCurr
                     break
                 elif (test $comCurr -gt $comMerg)
                 then
                     break
                 fi
             done
-            if (test "$comCurr"!="") then
+            if (test $commonCommit -ne -1) then
                 break
             fi
         done
-
+        # deletes branch if it has no unmerged changes
         if (test "$commonCommit" -eq "$commitNo")
         then
             rm -r .girt/branch/$2
@@ -76,6 +91,7 @@ then
         exit 1
     fi
     echo "girt-branch: error: branch '$2' doesn't exist"
+# invalid usage
 else
     echo "usage: girt-branch [-d] <branch>"
 fi
